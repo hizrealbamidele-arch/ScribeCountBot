@@ -1,18 +1,21 @@
 import os
 import re
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Get token from environment variable (secure for Railway)
+# Get token from environment variable
 TOKEN = os.environ.get("BOT_TOKEN", "")
 
-# If no token is set, show error
 if not TOKEN:
-    raise ValueError("BOT_TOKEN environment variable not set!")
+    print("❌ ERROR: BOT_TOKEN environment variable not set!")
+    print("Please add BOT_TOKEN in Railway Variables tab")
+    exit(1)
+
+print(f"✅ Token loaded successfully (length: {len(TOKEN)})")
 
 # ===== Helper Functions =====
 def count_words(text: str) -> int:
-    """Count words in text (splits by whitespace)"""
+    """Count words in text"""
     return len(text.split())
 
 def count_characters(text: str) -> int:
@@ -25,18 +28,13 @@ def count_characters_no_spaces(text: str) -> int:
 
 def count_sentences(text: str) -> int:
     """Count sentences using ., !, ? as delimiters"""
-    # Split on sentence-ending punctuation
     sentences = re.split(r'[.!?]+', text)
-    # Filter out empty strings
-    sentences = [s for s in sentences if s.strip()]
-    return len(sentences)
+    return len([s for s in sentences if s.strip()])
 
 def count_paragraphs(text: str) -> int:
     """Count paragraphs by splitting on double newlines"""
     paragraphs = text.split('\n\n')
-    # Filter out empty paragraphs
-    paragraphs = [p for p in paragraphs if p.strip()]
-    return len(paragraphs)
+    return len([p for p in paragraphs if p.strip()])
 
 def estimate_reading_time(word_count: int) -> str:
     """Estimate reading time (200 words per minute avg)"""
@@ -92,11 +90,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /stats command"""
-    # This is a simple version - you can expand with database later
     stats_text = (
         "📊 *Bot Statistics*\n\n"
         "This bot is powered by:\n"
-        "• Python 3.x\n"
+        "• Python 3.11\n"
         "• python-telegram-bot library\n"
         "• Deployed on Railway\n\n"
         "⚡ *Features:*\n"
@@ -165,7 +162,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ===== Error Handler =====
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Log errors caused by updates"""
-    print(f"Update {update} caused error {context.error}")
+    print(f"❌ Error: {context.error}")
     if update and update.message:
         await update.message.reply_text("⚠️ An error occurred. Please try again.")
 
@@ -174,24 +171,30 @@ def main():
     """Start the bot"""
     print("🚀 Starting ScribeCountBot...")
     
-    # Create application with the token
-    application = Application.builder().token(TOKEN).build()
-    
-    # Add command handlers
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("stats", stats_command))
-    application.add_handler(CommandHandler("about", about_command))
-    
-    # Add message handler for all text messages
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    # Add error handler
-    application.add_error_handler(error_handler)
-    
-    # Start polling
-    print("✅ Bot is running! Press Ctrl+C to stop.")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    try:
+        # Create application with the token
+        application = Application.builder().token(TOKEN).build()
+        print("✅ Application built successfully")
+        
+        # Add command handlers
+        application.add_handler(CommandHandler("start", start_command))
+        application.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("stats", stats_command))
+        application.add_handler(CommandHandler("about", about_command))
+        
+        # Add message handler for all text messages
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        
+        # Add error handler
+        application.add_error_handler(error_handler)
+        
+        # Start polling
+        print("✅ Bot is running! Waiting for messages...")
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+        
+    except Exception as e:
+        print(f"❌ Fatal error: {e}")
+        raise
 
 if __name__ == "__main__":
     main()
